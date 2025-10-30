@@ -7,7 +7,7 @@ const MainLayout = lazy(() => import('src/layouts/MainLayout'));
 const NotFoundView = lazy(() => import('src/views/Errors/NotFoundView'));
 const NoWorkspace = lazy(() => import('src/views/Errors/NoWorkspace'));
 const LoginPage = lazy(() => import('src/views/Login'));
-const VDIPage = lazy(() => import('src/views/vdi'));
+// const VDIPage = lazy(() => import('src/views/vdi'));
 const RoleSelection = lazy(() => import('src/views/RoleSelection'));
 const Dashboard = lazy(() => import('src/views/Dashboard'));
 const FormPage = lazy(() => import('src/views/FormPage'));
