@@ -1,0 +1,448 @@
+/* third lib*/
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { FormattedMessage as Intl } from 'react-intl';
+import Scrollbar from 'react-perfect-scrollbar';
+import { useNavigate } from 'react-router-dom';
+import styled from '@emotion/styled';
+
+/* local components & methods */
+import Loading from '@assets/icons/Loading';
+import Button from '@basics/Button';
+import TextEdit from '@basics/TextEdit';
+import { DragDropContext } from 'react-beautiful-dnd';
+import CallModal from '@basics/CallModal';
+import { getWorkflowData, saveWorkflowData, getFormItem } from '@lib/api';
+import { useGlobalContext } from 'src/context';
+import { SUCCESS } from 'src/lib/data/callStatus';
+import { sendNotify } from 'src/utils/systerm-error';
+import WorkflowRender from './WorkflowRender';
+import WorkflowDesginPanel from './WorkflowDesginPanel';
+import { THEME } from '../theme';
+
+// Styled components
+const WorkflowContainer = styled.div`
+  width: 100%;
+  display: flex;
+  height: 100%;
+`;
+
+const WorkflowView = styled.div`
+  flex: 1;
+  height: 100%;
+  margin-right: ${THEME.spacing.space16};
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: ${THEME.colors.white};
+  box-shadow: ${THEME.shadows.paperShadow};
+`;
+
+const NameEditBar = styled.div`
+  width: 100%;
+  height: 7.75rem;
+  background-color: ${THEME.colors.white};
+  border-radius: 4px;
+  box-sizing: border-box;
+  padding: ${THEME.spacing.space32};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const TextEditor = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: ${THEME.fontWeights.bold};
+  font-size: ${THEME.fontSizes.fontSize1};
+  color: ${THEME.colors.darkPurple};
+  font-family: Comfortaa;
+
+  .customInput {
+    color: ${THEME.colors.mainPurple};
+    font-size: ${THEME.fontSizes.fontSize2};
+    font-weight: ${THEME.fontWeights.medium};
+  }
+`;
+
+const WorkflowPanel = styled.div`
+  position: relative;
+  height: calc(100% - 10rem);
+`;
+
+const FlowContainer = styled.div`
+  margin-top: ${THEME.spacing.space36};
+  height: 100%;
+`;
+
+const FlowContainerScrollbar = styled(Scrollbar)`
+  width: 100%;
+`;
+
+const Workflow = ({ flowId, droppableItems }) => {
+  const { authContext } = useGlobalContext();
+  const navigate = useNavigate();
+
+  const [workflowData, setWorkflowData] = useState(null);
+  const [formFields, setFormFields] = useState([]);
+  const [flowLoading, setFlowLoading] = useState(true);
+  const [editIndex, setEditIndex] = useState(null);
+  const [conditionItems, setConditionItems] = useState([]);
+  const [submitData, setSubmitData] = useState();
+  const [modalData, setModalData] = useState({
+    open: false,
+    status: 0,
+    content: '',
+    cb: null,
+  });
+
+  const validateCheck = useCallback(workflowData => {
+    let checkData = {
+      validate: true,
+      msg: '',
+    };
+    let flowTypeStep = workflowData.stages.map(item => item.flowType);
+    if (!flowTypeStep.includes('Approval')) {
+      checkData.validate = false;
+      checkData.msg = 'Approval process is require in each workflow.';
+    } else {
+      let stages = workflowData.stages;
+
+      for (let index = 0; index < stages.length; index++) {
+        const item = stages[index];
+
+        if (item.flowType === 'Approval' && item.condition.length < 1) {
+          checkData.validate = false;
+          checkData.msg = `${item.label} need to have at least one approver`;
+          break;
+        }
+        item.condition.forEach(con => {
+          if (!con.value && item.flowType !== 'Approval' && !con.optional) {
+            checkData.validate = false;
+            checkData.msg = `${item.label} has condition value is Empty`;
+          }
+        });
+      }
+    }
+    return checkData;
+  }, []);
+
+  const saveWorkflow = useCallback(() => {
+    setModalData({
+      ...modalData,
+      status: 0,
+      content: 'Submitting. and appreciate your patience.',
+      cb: null,
+    });
+    saveWorkflowData(submitData)
+      .then(res => {
+        if (res.code === SUCCESS) {
+          setModalData({
+            open: true,
+            status: 2,
+            content: 'workflow has been saved',
+            cb: () => {
+              navigate(`/app/workflowManagement`);
+            },
+          });
+        }
+      })
+      .catch(e => {
+        setModalData({
+          open: true,
+          status: 3,
+          content: e.message,
+        });
+      });
+  }, [submitData, navigate, modalData]);
+
+  const buttonClickHandle = useCallback(() => {
+    if (modalData.cb) {
+      modalData.cb();
+      return;
+    }
+    switch (modalData.status) {
+      case 0:
+      case 2:
+        setModalData({ ...modalData, open: false, cb: null });
+        break;
+      case 1:
+      case 3:
+        saveWorkflow(submitData);
+        break;
+      default:
+        break;
+    }
+  }, [modalData, submitData, saveWorkflow]);
+
+  const submitHandle = useCallback(() => {
+    let checked = validateCheck(workflowData);
+    if (!checked.validate) {
+      sendNotify({
+        msg: checked.msg,
+        status: 3,
+        show: true,
+      });
+      return;
+    }
+    setModalData({
+      open: true,
+      status: 1,
+      content: 'Do you confirm to save the workflow?',
+    });
+    setSubmitData({
+      ...workflowData,
+      modify_by: authContext.userId,
+    });
+  }, [validateCheck, workflowData, authContext.userId]);
+
+  const flow = useMemo(() => {
+    return workflowData ? workflowData.stages : [];
+  }, [workflowData]);
+
+  const editFlow = useMemo(() => {
+    if (editIndex !== null) {
+      return flow[editIndex];
+    } else {
+      return null;
+    }
+  }, [editIndex, flow]);
+
+  const flowIdList = useMemo(() => {
+    if (editFlow) {
+      return editFlow.condition.map(item => {
+        return item.id;
+      });
+    }
+    return flow.map(item => {
+      return item.id;
+    });
+  }, [flow, editFlow]);
+
+  const dropOptions = useMemo(() => {
+    let tmpList;
+    if (editFlow) {
+      let tmpConditions = conditionItems
+        ? conditionItems.filter(condition => {
+            return !flowIdList.includes(condition.id);
+          })
+        : [];
+      return { type: 'condition', data: tmpConditions };
+    } else {
+      tmpList = JSON.parse(JSON.stringify(droppableItems));
+      // not unique item splice have dropped item from optionsList
+      tmpList = tmpList.filter(item => item.group !== 'Approval');
+      tmpList.forEach(item => {
+        item.itemList = item.itemList.filter(condition => {
+          return !flowIdList.includes(condition.id);
+        });
+      });
+      return { type: 'item', data: tmpList };
+    }
+  }, [flowIdList, editFlow, droppableItems, conditionItems]);
+
+  const dropOptionMap = useMemo(() => {
+    let mapData = {};
+    dropOptions.data.forEach((item, index) => {
+      mapData[item.group] = { seq: index, data: item };
+    });
+    return mapData;
+  }, [dropOptions]);
+
+  const commonConditionMap = useMemo(() => {
+    let mapData = {};
+    droppableItems.forEach((item, index) => {
+      mapData[item.group] = item.commonConditions || [];
+    });
+    return mapData;
+  }, [droppableItems]);
+
+  const formFieldOptions = useMemo(() => {
+    return formFields.map(item => ({ label: item.label, value: item.id }));
+  }, [formFields]);
+
+  const onDragEnd = result => {
+    // dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+    const { source, destination, draggableId } = result;
+    let droppableId = destination.droppableId;
+    let isCondition = false;
+
+    const tmpData = draggableId.split('_');
+    const itemType = tmpData[0];
+
+    if (droppableId.includes('condition')) {
+      droppableId = droppableId.replace('condition', '');
+      isCondition = true;
+    }
+
+    const destinationIndex = Number(droppableId.replace('droppable', ''));
+
+    const itemIndex = source.index;
+    let data = dropOptionMap[itemType].data.itemList[itemIndex];
+    let tempFlow = JSON.parse(JSON.stringify(flow));
+    if (isCondition) {
+      tempFlow[destinationIndex].condition.push(data);
+    } else {
+      tempFlow.splice(destinationIndex, 1, data);
+    }
+    setWorkflowData({ ...workflowData, stages: tempFlow });
+  };
+
+  useEffect(() => {
+    setFlowLoading(true);
+    getWorkflowData({ id: flowId })
+      .then(res => {
+        if (res.code === SUCCESS) {
+          let wfData = res.data;
+          getFormItem({ id: wfData.form_id })
+            .then(res2 => {
+              if (res2.code === SUCCESS) {
+                let tmpItemList = res2.data.fieldList;
+                setFormFields(tmpItemList);
+                setWorkflowData(wfData);
+                setFlowLoading(false);
+              }
+            })
+            .catch(e => {
+              sendNotify({ msg: e.message, status: 3, show: true });
+            });
+        }
+      })
+      .catch(e => {
+        sendNotify({
+          msg: 'Faild to get workflow data.',
+          status: 3,
+          show: true,
+        });
+      });
+  }, [flowId]);
+
+  const getChildOptions = data => {
+    if (data.flowType === 'Trigger') {
+      let tmpItemList = formFields.map(item => ({
+        id: item.id,
+        style: item.style,
+        options: item.options,
+        label: item.label,
+        placeholder: item.placeholder,
+        value: item.default || '',
+        conditionType: '0',
+      }));
+      setConditionItems([
+        {
+          label: 'Form Fields',
+          group: 'FormField',
+          itemList: tmpItemList,
+        },
+      ]);
+    }
+
+    if (data.flowType === 'Approval') {
+      let condtions = commonConditionMap[data.flowType];
+      setConditionItems([
+        {
+          label: 'Approval Level',
+          group: 'ApprovalLevel',
+          itemList: condtions,
+        },
+      ]);
+    }
+  };
+
+  return (
+    <WorkflowContainer>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <WorkflowView>
+          {flowLoading && <Loading />}
+          {!flowLoading && (
+            <>
+              <NameEditBar>
+                <TextEditor>
+                  <TextEdit
+                    value={workflowData.workflow_name}
+                    onChange={name => {
+                      setWorkflowData({
+                        ...workflowData,
+                        workflow_name: name,
+                      });
+                    }}
+                  />
+                </TextEditor>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Button
+                    onClick={() => {
+                      window.history.back();
+                    }}
+                    style={{
+                      marginLeft: THEME.spacing.space20,
+                    }}
+                  >
+                    <Intl id='back' />
+                  </Button>
+
+                  <Button
+                    onClick={submitHandle}
+                    filled
+                    style={{
+                      marginLeft: THEME.spacing.space20,
+                    }}
+                  >
+                    <Intl id='save' />
+                  </Button>
+                </div>
+              </NameEditBar>
+              <WorkflowPanel>
+                <FlowContainer>
+                  <FlowContainerScrollbar>
+                    <WorkflowRender
+                      editFlow={editFlow}
+                      closeEdit={data => {
+                        let tmpFlow = JSON.parse(JSON.stringify(flow));
+                        tmpFlow[editIndex] = data;
+                        setWorkflowData({ ...workflowData, stages: tmpFlow });
+                        setConditionItems(null);
+                      }}
+                      editIndex={editIndex}
+                      onEdit={(index, data) => {
+                        setConditionItems(null);
+                        setEditIndex(index);
+                        if (index !== null) {
+                          getChildOptions(data);
+                        }
+                      }}
+                      formFieldOptions={formFieldOptions}
+                      workflowData={flow}
+                      onChange={data => {
+                        setWorkflowData({ ...workflowData, stages: data });
+                      }}
+                    />
+                  </FlowContainerScrollbar>
+                </FlowContainer>
+              </WorkflowPanel>
+            </>
+          )}
+        </WorkflowView>
+        <WorkflowDesginPanel dropOptions={dropOptions} />
+      </DragDropContext>
+      <CallModal
+        open={modalData.open}
+        content={modalData.content}
+        status={modalData.status}
+        buttonClickHandle={buttonClickHandle}
+        handleClose={() => {
+          setModalData({ ...modalData, open: false, cb: null });
+        }}
+      />
+    </WorkflowContainer>
+  );
+};
+
+export default Workflow;

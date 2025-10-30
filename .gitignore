@@ -1,0 +1,7 @@
+node_modules/
+**/.venv/
+server/torro2-backend/.venv/
+dist/
+build/
+*.zip
+.DS_Store

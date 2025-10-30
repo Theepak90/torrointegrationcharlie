@@ -1,0 +1,736 @@
+import api from 'src/config/api-urls';
+import { DELETE, POST, PUT } from '@lib/data/api-types';
+import { isObject } from 'formik';
+
+let API_CONFIG = api;
+
+const appendQueryStr = (url, param) => {
+  return `${url}${
+    url.endsWith('?') ? '' : url.includes('?') ? '&' : '?'
+  }${Object.entries(param)
+    .reduce(
+      (params, [key, val]) => [
+        ...params,
+        `${encodeURIComponent(key)}=${encodeURIComponent(val)}`,
+      ],
+      []
+    )
+    .join('&')}`;
+};
+
+const handleObjectToFormData = (data, ss) => {
+  let _data = data;
+
+  if (_data instanceof FormData) {
+    return _data;
+  }
+
+  if (isObject(data)) {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (typeof data[key] === 'object') {
+        if (data[key] instanceof File) {
+          formData.append(key, data[key], data[key].name);
+        } else if (data[key] instanceof FileList) {
+          formData.append(key, data[key][0], data[key][0].name);
+        } else {
+          formData.append(key, JSON.stringify(data[key]));
+        }
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+    _data = formData;
+  } else {
+    _data = JSON.stringify(data, null, 2);
+  }
+  return _data;
+};
+
+const handleResponse = async response => {
+  let body;
+
+  try {
+    body = response.json ? await response.json() : {};
+  } catch (error) {
+    throw new Error('API service unavaliable!');
+  }
+  const statusCode = response.status.toString().split('');
+  let technicalError = statusCode[0] === '5';
+
+  const res = {
+    errorInfo: body.errorInfo,
+    status: response.status,
+    technicalError,
+  };
+
+  if (response.ok) {
+    if (res.errorInfo) {
+      return res;
+    }
+
+    if (body.code && body.code !== 200) {
+      throw new Error(body.msg);
+    }
+    return body;
+  } else {
+    if (res.errorInfo) {
+      return res;
+    } else {
+      throw response;
+    }
+  }
+};
+
+const callApi = (method, url, param) => {
+  const canHaveBody = method === POST || method === PUT || method === DELETE;
+  const postUrl = canHaveBody
+    ? url
+    : (param && appendQueryStr(url, param)) || url;
+  const isFormData = param instanceof FormData;
+  const body = canHaveBody
+    ? isFormData
+      ? param
+      : handleObjectToFormData(param)
+    : null;
+
+  return fetch(postUrl, {
+    body,
+    method,
+    credentials: 'include',
+  }).catch(e => {
+    throw new Error('API service unavaliable!');
+  });
+};
+export const LoginCall = async param => {
+  let {
+    login: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const refreshToken = async param => {
+  let {
+    loginGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+/*
+** disabled when using worksocket to retrive notifications
+
+export const getNotify = async (param) => {
+  let {
+    systemNotify: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+*/
+
+export const readNotify = async param => {
+  let {
+    notifyRead: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const updateLogin = async param => {
+  let {
+    loginPut: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const OrgSetup = async param => {
+  let {
+    orgPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getRequestData = async param => {
+  let {
+    requestDataGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFilterOptions = async param => {
+  let {
+    filterOptionGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getRequestDetail = async param => {
+  let {
+    requestDetailGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getRequestDetailList = async param => {
+  let {
+    requestDetailListGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const postComment = async param => {
+  let {
+    commentPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const deleteComment = async param => {
+  let {
+    commentDelete: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFormList = async param => {
+  let {
+    formListGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFieldTemplate = async param => {
+  let {
+    fieldTemplateGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFormItem = async param => {
+  let {
+    formItemGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFormDataList = async param => {
+  let {
+    formItemListGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const postFormData = async param => {
+  let {
+    formDataPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const addFormData = async param => {
+  let {
+    formAddPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getAllStages = async param => {
+  let {
+    allStageGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const deleteFormData = async param => {
+  let {
+    formDelete: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getWorkflowData = async param => {
+  let {
+    workFlowDataGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFormWorkflowData = async param => {
+  let {
+    workFlowFormDataGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const postWorkflowData = async param => {
+  let {
+    workFlowDataPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const saveWorkflowData = async param => {
+  let {
+    workFlowDataPut: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const deleteWorkflowData = async param => {
+  let {
+    workFlowDataDelete: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getConsole = async param => {
+  let {
+    ConsoleGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const raiseFormRequest = async param => {
+  let {
+    postFormRequest: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const raiseFormRequestList = async param => {
+  let {
+    postFormRequestList: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const updateFormRequest = async param => {
+  let {
+    putFormRequest: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const deleteFormRequest = async param => {
+  let {
+    deleteFormRequest: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const changeStatus = async param => {
+  let {
+    postRequestStatus: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const changeStatusList = async param => {
+  let {
+    postRequestStatusList: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getWsList = async param => {
+  let {
+    workspaceGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const wsPut = async param => {
+  let {
+    workspacePut: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const wsPost = async param => {
+  let {
+    workspacePost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const wsDelete = async param => {
+  let {
+    workspaceDelete: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getWsDetail = async param => {
+  let {
+    workspaceDetailGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getUcResource = async param => {
+  let {
+    useCaseResounceGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getUseCaseList = async () => {
+  let {
+    useCaseGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url));
+};
+
+export const getUseCaseDetail = async param => {
+  let {
+    useCasePost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const lookupResource = async param => {
+  let {
+    lookupResource: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getTableSchema = async param => {
+  let {
+    tableSchemaGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getHiveResource = async param => {
+  let {
+    hiveResoruceaGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getPolicys = async param => {
+  let {
+    policysGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getTableData = async param => {
+  let {
+    tableDataGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getTags = async param => {
+  let {
+    governersTagGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+/* ============== static data call =====================*/
+
+export const getOnBoardDataForm = async param => {
+  let {
+    onBoardDataForm: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getFieldDisplayConfig = async param => {
+  let {
+    fieldDisplayConfig: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getUserCaseMemberConfig = async param => {
+  let {
+    useCaseMemberConfig: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getRequiredTableTag = async param => {
+  let {
+    requiredTableTag: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getDataLineage = async param => {
+  let {
+    dataLineage: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getOrgForm = async param => {
+  let {
+    orgFormGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getWorkspaceForm = async param => {
+  let {
+    wsFormGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getPolicyForm = async param => {
+  let {
+    policyFormGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getThemeConfig = async param => {
+  let {
+    themeConfigGet: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const postThemeConfig = async param => {
+  let {
+    themeConfigPost: { url, method },
+  } = API_CONFIG;
+
+  return await handleResponse(await callApi(method, url, param));
+};
+
+/* ============== static data end =====================*/
+
+/* ============== batch run start =====================*/
+
+export const batchRunTask = async data => {
+  let {
+    batchUpload: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, data));
+};
+
+/* ============== Data Discovery System APIs =====================*/
+
+// System Status APIs
+export const getSystemStatus = async param => {
+  let {
+    systemStatus: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getSystemHealth = async param => {
+  let {
+    systemHealth: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// Connector Management APIs
+export const getConnectors = async param => {
+  let {
+    connectors: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getConnectorConfig = async param => {
+  let {
+    connectorConfig: { url, method },
+  } = API_CONFIG;
+  // Build the URL with connectorId for getting config
+  const configUrl = `${url}/${param.connectorId}`;
+  return await handleResponse(await callApi(method, configUrl));
+};
+
+export const testConnectorConfig = async param => {
+  let {
+    connectorConfigTest: { url, method },
+  } = API_CONFIG;
+  // Build the URL with connectorId for testing
+  const testUrl = `${url}/${param.connectorId}/test`;
+  return await handleResponse(await callApi(method, testUrl, param));
+};
+
+export const deleteConnector = async param => {
+  let {
+    connectorDelete: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// Discovery APIs
+export const testDiscovery = async param => {
+  let {
+    discoveryTest: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const startDiscovery = async param => {
+  let {
+    discoveryStart: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const scanSpecificSource = async param => {
+  let {
+    discoveryScanSource: { url, method },
+  } = API_CONFIG;
+  // Build URL with source parameter for specific source scanning
+  const scanUrl = `${url}/${param.source}`;
+  return await handleResponse(await callApi(method, scanUrl, param));
+};
+
+export const getDiscoveryStatus = async param => {
+  let {
+    discoveryStatus: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// Assets APIs
+export const getAssetsList = async param => {
+  let {
+    assetsList: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const searchAssets = async param => {
+  let {
+    assetsSearch: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const getAssetDetails = async param => {
+  let {
+    assetDetails: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// Data Lineage APIs
+export const getLineageData = async param => {
+  let {
+    lineageData: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const createLineageRelationship = async param => {
+  let {
+    lineageRelationships: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const deleteLineageRelationship = async param => {
+  let {
+    lineageDelete: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// GCP Specific APIs
+export const addGcpConnector = async param => {
+  let {
+    gcpConnectorAdd: { url, method },
+  } = API_CONFIG;
+
+  // For GCP connector, send JSON string instead of FormData
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(param),
+  });
+
+  return await handleResponse(response);
+};
+
+export const testGcpConfig = async param => {
+  let {
+    gcpConfigTest: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+// Test connection for any connector (already defined above)
+
+// Test discovery for any connector
+export const testConnectorDiscovery = async param => {
+  let {
+    connectorDiscoveryTest: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};
+
+export const testGcpDiscovery = async param => {
+  let {
+    gcpDiscoveryTest: { url, method },
+  } = API_CONFIG;
+  return await handleResponse(await callApi(method, url, param));
+};

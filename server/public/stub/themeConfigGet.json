@@ -1,0 +1,9 @@
+{
+  "code": 200,
+  "data": {
+    "mainThemeColor": "#8fa0f5",
+    "mainDarkThemeColor": "#5c6bb5",
+    "mainLightThemeColor": "#c3cdfc",
+    "timeZone": "Asia/Hong_Kong,Europe/London"
+  }
+}

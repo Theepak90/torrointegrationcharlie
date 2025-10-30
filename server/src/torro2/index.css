@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap');
+
+* { box-sizing: border-box; }
+body, p, span, div, a, button, input, textarea, select, label, li, td, th {
+  font-family: 'Roboto', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+}
+#root { width: 100%; min-height: 100vh; max-width: none !important; }
+.dashboard-container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 16px 24px !important; box-sizing: border-box !important; }
+.dashboard-container .MuiCard-root, .dashboard-container .MuiPaper-root { width: 100% !important; flex: 1 !important; min-width: 0 !important; max-width: none !important; border-radius: 0 !important; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
