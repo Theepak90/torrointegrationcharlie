@@ -301,6 +301,7 @@ const LeftNav = ({ open, closeHandle }) => {
           wsManagementAdmin,
           dataGovernaceService,
           dataAnalyticsService,
+          dataNexus,
           inInfraServices,
         ];
       case IT:
@@ -309,6 +310,7 @@ const LeftNav = ({ open, closeHandle }) => {
           wsManagementOther,
           dataGovernaceService,
           dataAnalyticsService,
+          dataNexus,
           inInfraServices,
         ];
       case GOVERNOR:
@@ -320,7 +322,7 @@ const LeftNav = ({ open, closeHandle }) => {
           dataNexus,
         ];
       default:
-        return [dashboardItem, dataAnalyticsService];
+        return [dashboardItem, dataAnalyticsService, dataNexus];
     }
   }, [authContext.role, dataAnalyticList]);
 
