@@ -22,4 +22,3 @@ schedule==1.2.0
 apscheduler==3.10.4
 sqlglot>=20.7.0
 
-google-cloud-datacatalog==3.28.0
