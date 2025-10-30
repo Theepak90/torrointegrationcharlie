@@ -5,3 +5,4 @@ dist/
 build/
 *.zip
 .DS_Store
+torro2/frontend/node_modules/
