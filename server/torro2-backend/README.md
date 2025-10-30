@@ -71,4 +71,5 @@ Optional: Create a `.env` file for credentials if using `connectors.template.jso
 - First run creates empty JSON files for a fresh start
 - Backend auto-discovers assets when you test/connect to data sources
 - All data persists locally; delete JSON files to reset
-
+- **Lineage will be empty until you discover assets via connectors**
+- **Marketplace needs real credentials to work with actual data sources**
