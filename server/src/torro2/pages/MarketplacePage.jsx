@@ -24,6 +24,13 @@ import {
   DialogContent,
   DialogActions,
   Autocomplete,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from '@mui/material';
 import { Search, Label, TableChart, ArrowDropDown, Delete, Publish, Security } from '@mui/icons-material';
 
@@ -42,6 +49,8 @@ const MarketplacePage = () => {
   const [tableTagDialogOpen, setTableTagDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [columnTagDialogOpen, setColumnTagDialogOpen] = useState(false);
+  const [selectedColumnForTag, setSelectedColumnForTag] = useState(null);
 
   useEffect(() => {
     setGcpProject(''); setDataset(''); setTableName(''); setCatalog(''); setSchema(''); setTableData(null);
@@ -84,12 +93,35 @@ const MarketplacePage = () => {
   const handleOpenTagMenu = (e) => setTagMenuAnchor(e.currentTarget);
   const handleCloseTagMenu = () => setTagMenuAnchor(null);
   const handleAddTableTag = () => { setTableTagDialogOpen(true); };
+  const handleAddColumnTag = (columnName) => { setSelectedColumnForTag(columnName); setColumnTagDialogOpen(true); };
   const handleAddTag = () => {
     if (!newTag.trim()) return;
-    const updated = { ...tableData, tableTags: [...(tableData.tableTags || []), newTag.trim()] };
-    setTableData(updated);
+    if (selectedColumnForTag) {
+      const updatedColumns = tableData.columns.map((column) =>
+        column.name === selectedColumnForTag
+          ? { ...column, tags: [...(column.tags || []), newTag.trim()] }
+          : column
+      );
+      setTableData({ ...tableData, columns: updatedColumns });
+      setSelectedColumnForTag(null);
+      setColumnTagDialogOpen(false);
+    } else {
+      const updated = { ...tableData, tableTags: [...(tableData.tableTags || []), newTag.trim()] };
+      setTableData(updated);
+      setTableTagDialogOpen(false);
+    }
     setNewTag('');
-    setTableTagDialogOpen(false);
+  };
+
+  const handleRemoveTag = (columnName, tagToRemove) => {
+    setTableData({
+      ...tableData,
+      columns: tableData.columns.map((column) =>
+        column.name === columnName
+          ? { ...column, tags: (column.tags || []).filter((tag) => tag !== tagToRemove) }
+          : column
+      ),
+    });
   };
 
   const handlePublishTags = async () => {
@@ -156,30 +188,83 @@ const MarketplacePage = () => {
 
           {tableData && (
             <Box sx={{ mt: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Table: {tableData.tableName}</Typography>
-              <Card>
-                <CardContent>
-                  <Grid container spacing={2}>
-                    {tableData.columns.map((column, index) => (
-                      <Grid item xs={12} md={6} key={index}>
-                        <Card variant="outlined"><CardContent>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{column.name}</Typography>
-                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
-                            <Chip label={column.type} size="small" variant="outlined" />
-                            <Chip label={column.mode} size="small" color={column.mode === 'REQUIRED' ? 'error' : 'default'} variant="outlined" />
-                            {(column.tags || []).map((tag, tIdx) => (
-                              <Chip key={tIdx} label={tag} size="small" onDelete={() => {
-                                const updated = tableData.columns.map(c => c.name === column.name ? { ...c, tags: (c.tags || []).filter(x => x !== tag) } : c);
-                                setTableData({ ...tableData, columns: updated });
-                              }} deleteIcon={<Delete fontSize="small" />} sx={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9', fontWeight: 600 }} />
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                Table: {tableData.tableName || tableData.tableId || tableData.table}
+              </Typography>
+              {tableData.tableTags && tableData.tableTags.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                  {tableData.tableTags.map((tag, idx) => (
+                    <Chip
+                      key={`${tag}-${idx}`}
+                      label={tag}
+                      size="small"
+                      onDelete={() => {
+                        const updated = tableData.tableTags.filter((_, index) => index !== idx);
+                        setTableData({ ...tableData, tableTags: updated });
+                      }}
+                      deleteIcon={<Delete fontSize="small" />}
+                      sx={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9', fontWeight: 600 }}
+                    />
+                  ))}
+                </Box>
+              )}
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Column</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Mode</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Tags</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }} align="right">
+                        <Button variant="outlined" size="small" startIcon={<Label />} onClick={handleAddTableTag}>
+                          Add Table Tag
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tableData.columns.map((column) => (
+                      <TableRow key={column.name} hover>
+                        <TableCell sx={{ fontWeight: 600 }}>{column.name}</TableCell>
+                        <TableCell><Chip label={column.type} size="small" variant="outlined" /></TableCell>
+                        <TableCell>
+                          <Chip
+                            label={column.mode}
+                            size="small"
+                            color={column.mode === 'REQUIRED' ? 'error' : 'default'}
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {(column.tags || []).length === 0 && (
+                              <Typography variant="body2" color="text.secondary">
+                                None
+                              </Typography>
+                            )}
+                            {(column.tags || []).map((tag) => (
+                              <Chip
+                                key={`${column.name}-${tag}`}
+                                label={tag}
+                                size="small"
+                                onDelete={() => handleRemoveTag(column.name, tag)}
+                                deleteIcon={<Delete fontSize="small" />}
+                                sx={{ backgroundColor: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9', fontWeight: 600 }}
+                              />
                             ))}
                           </Box>
-                        </CardContent></Card>
-                      </Grid>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button variant="outlined" size="small" startIcon={<TableChart />} onClick={() => handleAddColumnTag(column.name)}>
+                            Add Column Tag
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </Grid>
-                </CardContent>
-              </Card>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Box>
           )}
         </CardContent>
@@ -192,6 +277,33 @@ const MarketplacePage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTableTagDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAddTag} variant="contained" disabled={!newTag.trim()}>Add</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={columnTagDialogOpen} onClose={() => { setColumnTagDialogOpen(false); setSelectedColumnForTag(null); setNewTag(''); }} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Tag to {selectedColumnForTag}</DialogTitle>
+        <DialogContent>
+          <Autocomplete
+            freeSolo
+            options={existingTags}
+            value={newTag}
+            onInputChange={(e, v) => setNewTag(v)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Tag Name"
+                placeholder="Enter tag"
+                variant="outlined"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') handleAddTag();
+                }}
+              />
+            )}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setColumnTagDialogOpen(false); setSelectedColumnForTag(null); setNewTag(''); }}>Cancel</Button>
           <Button onClick={handleAddTag} variant="contained" disabled={!newTag.trim()}>Add</Button>
         </DialogActions>
       </Dialog>
