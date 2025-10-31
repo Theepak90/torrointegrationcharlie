@@ -115,7 +115,9 @@ const MarketplacePage = () => {
             Publish Data Assets to Marketplace
           </Typography>
           <FormControl component="fieldset" sx={{ mb: 4 }}>
-            <FormLabel component="legend" sx={{ color: '#1976d2', fontWeight: 600, mb: 2, fontSize: '1rem' }}>Resource Type *</n+            </FormLabel>
+            <FormLabel component="legend" sx={{ color: '#1976d2', fontWeight: 600, mb: 2, fontSize: '1rem' }}>
+              Resource Type *
+            </FormLabel>
             <RadioGroup value={resourceType} onChange={(e) => setResourceType(e.target.value)} row sx={{ gap: 2 }}>
               <FormControlLabel value="GCP" control={<Radio />} label="GCP" />
               <FormControlLabel value="Starburst Galaxy" control={<Radio />} label="Starburst Galaxy" />

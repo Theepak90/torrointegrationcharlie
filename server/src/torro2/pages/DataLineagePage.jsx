@@ -84,6 +84,8 @@ const DataLineagePage = () => {
         label: edge.relationship || 'feeds into',
         data: { column_lineage: edge.column_lineage || [] },
       }));
+      setNodes(flowNodes);
+      setEdges(flowEdges);
       setFullLineageData({ nodes: flowNodes, edges: flowEdges, rawData: data });
     } catch (err) {
       setError(`Failed to load lineage data: ${err.message}`);
