@@ -977,6 +977,41 @@ def lookup_catalog_schema_table_ids(account_domain: str, access_token: str, cata
         print(f"❌ Error looking up {catalog_name}.{schema_name}.{table_name}: {str(e)}")
         return (None, None, None)
 
+def check_tag_attached_to_column(account_domain: str, access_token: str, tag_id: str, catalog_id: str, schema_id: str, table_id: str, column_name: str):
+    """
+    Check if a tag is already attached to a specific column
+    Returns: True if attached, False if not
+    """
+    base_url = f"https://{account_domain}"
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        # Get column tags to check if our tag is already there
+        encoded_catalog_id = requests.utils.quote(catalog_id)
+        encoded_schema_id = requests.utils.quote(schema_id)
+        encoded_table_id = requests.utils.quote(table_id)
+        encoded_column = requests.utils.quote(column_name)
+        
+        check_url = f"{base_url}/public/api/v1/catalog/{encoded_catalog_id}/schema/{encoded_schema_id}/table/{encoded_table_id}/column/{encoded_column}/tags"
+        
+        response = requests.get(check_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            existing_tags = response.json()
+            # Check if our tag_id is in the list of existing tags
+            for tag in existing_tags:
+                if tag.get('tagId') == tag_id:
+                    return True
+        
+        return False
+        
+    except Exception as e:
+        print(f"DEBUG: Could not check existing tags for column {column_name}: {str(e)}")
+        return False  # If we can't check, assume it's not attached
+
 def get_or_create_tag(account_domain: str, access_token: str, tag_name: str, tag_color: str = "#1976d2"):
     """
     Get existing tag by name or create a new one
@@ -1603,10 +1638,19 @@ async def publish_tags(request: PublishTagsRequest):
                     else:
                         print(f"✅ Using existing tag '{sanitized_tag_name}' (ID: {tag_id})")
                     
-                    # Step 2: Apply tag to column using REST API
-                    # According to Starburst API docs:
-                    # PUT /public/api/v1/tag/{tagId}/catalog/{catalogId}/schema/{schemaId}/table/{tableId}/column/{columnId}
+                    # Step 2: Check if tag is already attached, then apply if needed
                     if catalog_id and schema_id and table_id:
+                        # First check if tag is already attached to this column
+                        is_already_attached = check_tag_attached_to_column(
+                            account_domain, access_token, tag_id, catalog_id, schema_id, table_id, col_tag.columnName
+                        )
+                        
+                        if is_already_attached:
+                            print(f"✅ Tag '{sanitized_tag_name}' already attached to column '{col_tag.columnName}' - skipping")
+                            success_count += 1
+                            continue
+                        
+                        # Tag is not attached, proceed with attachment  
                         encoded_tag_id = requests.utils.quote(tag_id)
                         encoded_catalog_id = requests.utils.quote(catalog_id)
                         encoded_schema_id = requests.utils.quote(schema_id)
@@ -1616,12 +1660,20 @@ async def publish_tags(request: PublishTagsRequest):
                         # Use actual database IDs
                         update_url = f"{base_url}/public/api/v1/tag/{encoded_tag_id}/catalog/{encoded_catalog_id}/schema/{encoded_schema_id}/table/{encoded_table_id}/column/{encoded_column}"
                         
-                        print(f"DEBUG: Applying tag to column: {update_url}")
+                        print(f"DEBUG: Attaching new tag to column: {update_url}")
                         
                         update_response = requests.put(update_url, headers=headers, json={}, timeout=15)
                         
                         if update_response.status_code in [200, 204]:
                             print(f"✅ Successfully applied tag '{sanitized_tag_name}' to column '{col_tag.columnName}'")
+                            success_count += 1
+                        elif update_response.status_code == 409:
+                            # Tag is already attached to this column - treat as success
+                            print(f"✅ Tag '{sanitized_tag_name}' already attached to column '{col_tag.columnName}' - skipping")
+                            success_count += 1
+                        elif update_response.status_code == 400 and "already" in update_response.text.lower():
+                            # Handle "already exists" or "already attached" responses as success
+                            print(f"✅ Tag '{sanitized_tag_name}' already exists on column '{col_tag.columnName}' - treating as success")
                             success_count += 1
                         else:
                             error_msg = f"HTTP {update_response.status_code}: {update_response.text[:200]}"
